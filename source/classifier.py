@@ -36,6 +36,14 @@ def update(w, a, x, y, epoch, step_size):
 	return w, a, gamma_tilde, gamma
 
 
+def minimal_margin(w, a, x, y):
+	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	y_pred = np.dot(a, activations)
+	margins = np.multiply(y, y_pred)
+	gamma = np.min(margins)
+	return gamma
+
+
 def plot_classifier(w, a, x, y):
 	xmin = -1
 	xmax = 1
