@@ -2,12 +2,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def symmetric_init(alpha, m, d):
+def symmetric_init(alpha, s, m, d):
+	"""
+	alpha = |a_0| + ||w_0||
+	s = (|a_0| - ||w_0||) / (|a_0| + ||w_0||)
+	"""
+	norm_w = alpha * (1 - s) / 2
+	norm_a = alpha * (1 + s) / 2
+
 	w_0 = np.random.normal(size=(m, d), loc=0, scale=1)
 	w_0_norms = np.linalg.norm(w_0, axis=1, ord=2)
-	w_0 = w_0 / w_0_norms[:, np.newaxis] * alpha
+	w_0 = w_0 / w_0_norms[:, np.newaxis] * norm_w
+
 	a_0 = np.random.normal(size=(1, m), loc=0, scale=1)
-	a_0 = np.multiply(np.ones_like(a_0) * alpha, (1 * (a_0 > 0) - 0.5) * 2)
+	a_0 = np.multiply(np.ones_like(a_0) * norm_a, (1 * (a_0 > 0) - 0.5) * 2)
 
 	w_0[m // 2:, :] = w_0[:m // 2, :]
 	a_0[:, m // 2:] = -a_0[:, :m // 2]
