@@ -2,23 +2,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def symmetric_init(alpha, s, m, d):
+def symmetric_init(alpha, s, m, d, seed=None):
 	"""
 	alpha = |a_0| + ||w_0||
 	s = (|a_0| - ||w_0||) / (|a_0| + ||w_0||)
 	"""
-	norm_w = alpha * (1 - s) / 2
-	norm_a = alpha * (1 + s) / 2
+	if seed:
+		np.random.seed(seed)
+
+	norms_w = []
+	norms_a = []
+	for alpha_i, s_i in zip(alpha, s):
+		norm_w = np.sqrt(alpha_i * (1 - s_i) / (1 + s_i))
+		norm_a = np.sqrt(alpha_i * (1 + s_i) / (1 - s_i))
+		norms_w.append(norm_w)
+		norms_a.append(norm_a)
 
 	w_0 = np.random.normal(size=(m, d), loc=0, scale=1)
 	w_0_norms = np.linalg.norm(w_0, axis=1, ord=2)
-	w_0 = w_0 / w_0_norms[:, np.newaxis] * norm_w
+	w_0 = w_0 / w_0_norms[:, np.newaxis] * np.array(norms_w)[:, np.newaxis]
 
 	a_0 = np.random.normal(size=(1, m), loc=0, scale=1)
-	a_0 = np.multiply(np.ones_like(a_0) * norm_a, (1 * (a_0 > 0) - 0.5) * 2)
-
-	w_0[m // 2:, :] = w_0[:m // 2, :]
-	a_0[:, m // 2:] = -a_0[:, :m // 2]
+	a_0 = np.multiply(np.ones_like(a_0) * np.array(norms_a), (1 * (a_0 > 0) - 0.5) * 2)
 
 	return w_0, a_0
 

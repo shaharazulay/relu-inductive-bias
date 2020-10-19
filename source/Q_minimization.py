@@ -13,7 +13,7 @@ def restore(v, m, d):
 
 
 def q_func(x, s=0):
-	return 0.5 * (x * np.log(x + np.sqrt(x**2 + s**2)) - np.sqrt(x**2 + s**2))
+	return ((1 - s**2) * x * np.log(x * (1 - s**2) + np.sqrt(x ** 2 * (1 - s**2)**2 + s**2)) - np.sqrt(x ** 2 * (1 - s**2)**2 + s**2) + np.abs(s)) / (2 * (1 - s**2))
 
 
 def Q_func(w, a, mu, s=0):
@@ -22,9 +22,15 @@ def Q_func(w, a, mu, s=0):
 	:param a: vector of shape m x 1 representing the second layer a
 	:param mu: vector of shape m x 1 for each ReLU.
 	"""
+	assert len(mu) == len(s)
+	assert len(a) == len(mu)
+
+	cnt = 0
 	f = 0
 	for w_i, a_i, mu_i, s_i in zip(w, a, mu, s):
+		cnt += 1
 		f += mu_i * q_func(np.linalg.norm(a_i * w_i, ord=2) / mu_i, s=s_i)
+	assert cnt == len(mu)
 	return f
 
 
