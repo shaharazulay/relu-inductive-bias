@@ -78,7 +78,7 @@ def solver(x, y, w_0, a_0, m, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=N
 		method='SLSQP',
 		options={
 			'maxiter': 100000,
-			'disp': True
+			'disp': False
 		}
 	)
 	is_failed = (not sol.success)

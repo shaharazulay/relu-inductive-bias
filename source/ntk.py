@@ -19,12 +19,12 @@ def neural_tangent_kernel(w, a, x, x_tag):
 
 
 def kernel_distance(k_t, k_0):
-	return 1 - np.trace(np.dot(k_t, k_0.transpose())) / (np.linalg.norm(k_t, ord=2) * np.linalg.norm(k_0, ord=2))
+	return 1 - np.trace(np.dot(k_t, k_0.transpose())) / (np.linalg.norm(k_t, ord='fro') * np.linalg.norm(k_0, ord='fro'))
 
 
 def fit_svm_with_tangent_kernel(w, a, x, y):
 	kernel = lambda x, x_tag: neural_tangent_kernel(w, a, x, x_tag)
-	clf = svm.SVC(kernel=kernel)
+	clf = svm.SVC(C=np.inf, kernel=kernel)
 	clf.fit(x, y)
 	return clf
 
@@ -43,8 +43,8 @@ def plot_svm_classifier(clf, x, y):
 
 	plt.figure()
 	z = np.reshape(np.sign(y_pred), xx_1.shape)
-	plt.pcolormesh(xx_1, xx_2, z)
+	plt.pcolormesh(xx_1, xx_2, z, cmap='coolwarm')
 
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ > 0], [x_[2] for x_, y_ in zip(x, y) if y_ > 0])
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ < 0], [x_[2] for x_, y_ in zip(x, y) if y_ < 0])
+	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ > 0], [x_[2] for x_, y_ in zip(x, y) if y_ > 0], s=100, c='k', marker='+')
+	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ < 0], [x_[2] for x_, y_ in zip(x, y) if y_ < 0], s=100, c='k', marker='_')
 	plt.show()

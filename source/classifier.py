@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def symmetric_init(alpha, s, m, d, seed=None):
+def symmetric_init(alpha, s, m, d, symmetric=True, seed=None):
 	"""
 	alpha = |a_0| + ||w_0||
 	s = (|a_0| - ||w_0||) / (|a_0| + ||w_0||)
@@ -25,6 +25,10 @@ def symmetric_init(alpha, s, m, d, seed=None):
 	a_0 = np.random.normal(size=(1, m), loc=0, scale=1)
 	a_0 = np.multiply(np.ones_like(a_0) * np.array(norms_a), (1 * (a_0 > 0) - 0.5) * 2)
 
+	if symmetric:
+		w_0[m // 2:, :] = w_0[:m // 2, :]
+		a_0[:, m // 2:] = -a_0[:, :m // 2]
+
 	return w_0, a_0
 
 
@@ -43,8 +47,8 @@ def update(w, a, x, y, epoch, step_size):
 	w_grad = np.multiply(np.dot(c_i, np.multiply(x, grad_r.transpose())), a.transpose())
 	a_grad = np.dot(grad_r, activations.transpose())
 
-	a = a + step_size * a_grad / (np.sqrt(epoch + 1))
-	w = w + step_size * w_grad / (np.sqrt(epoch + 1))
+	a = a + step_size * a_grad
+	w = w + step_size * w_grad
 	gamma_tilde = gamma - np.log(np.sum(temp) / n)
 	return w, a, gamma_tilde, gamma
 
@@ -72,8 +76,8 @@ def plot_classifier(w, a, x, y):
 
 	plt.figure()
 	z = np.reshape(np.sign(y_pred), xx_1.shape)
-	plt.pcolormesh(xx_1, xx_2, z)
+	plt.pcolormesh(xx_1, xx_2, z, cmap='coolwarm')
 
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ > 0], [x_[2] for x_, y_ in zip(x, y) if y_ > 0])
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ < 0], [x_[2] for x_, y_ in zip(x, y) if y_ < 0])
+	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ > 0], [x_[2] for x_, y_ in zip(x, y) if y_ > 0], s=100, c='k', marker='+')
+	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ < 0], [x_[2] for x_, y_ in zip(x, y) if y_ < 0], s=100, c='k', marker='_')
 	plt.show()
