@@ -55,24 +55,27 @@ def train(w_0, a_0, x, y, m, d, alpha, s, step_size, n_epochs, eval_freq=1000, e
 			if evaluate(w, a, x, y) < 1:  # didn't reach sufficient margin solution yet
 				pass
 			else:
-				w_opt_Q, a_opt_Q = solver(
-					x,
-					y,
-					w_0,
-					a_0,
-					m,
-					d,
-					obj='Q',
-					mu=mu,
-					s=s,
-					#x0=np.random.normal(size=(m * (d + 1),)),
-					optim_tol=1e-10 if mu[0] > 10 else 1e-7
-				)
+				try:
+					w_opt_Q, a_opt_Q = solver(
+						x,
+						y,
+						w_0,
+						a_0,
+						m,
+						d,
+						obj='Q',
+						mu=mu,
+						s=s,
+						x0=np.random.normal(size=(m * (d + 1),)),
+						optim_tol=1e-10 if mu[0] > 10 else 1e-7
+					)
 
-				gamma = minimal_margin(w_opt_Q, a_opt_Q, x, y)
-				w_tilde_norms_Q = calc_w_tilde_norms(w_opt_Q, a_opt_Q) / gamma
-				w_tilde_norms_Q_array.append(w_tilde_norms_Q)
-				training_loss_Q.append(gamma_tilde)
+					gamma = minimal_margin(w_opt_Q, a_opt_Q, x, y)
+					w_tilde_norms_Q = calc_w_tilde_norms(w_opt_Q, a_opt_Q) / gamma
+					w_tilde_norms_Q_array.append(w_tilde_norms_Q)
+					training_loss_Q.append(gamma_tilde)
+				except Exception as e:
+					print(f'Mu = {mu[0]}:: {e}')
 
 	return {
 		'w': w_array,
