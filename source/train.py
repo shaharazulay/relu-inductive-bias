@@ -22,9 +22,6 @@ def train(w_0, a_0, x, y, m, d, alpha, s, step_size, n_epochs, eval_freq=1000, e
 	w_array = []
 	a_array = []
 
-	training_loss_Q = []
-	w_tilde_norms_Q_array = []
-
 	kernel_distances = []
 	k_0 = lambda x, x_tag: neural_tangent_kernel(w_0, a_0, x, x_tag)
 
@@ -48,42 +45,11 @@ def train(w_0, a_0, x, y, m, d, alpha, s, step_size, n_epochs, eval_freq=1000, e
 			k_t = lambda x, x_tag: neural_tangent_kernel(w, a, x, x_tag)
 			kernel_distances.append(kernel_distance(k_t(x, x), k_0(x, x)))
 
-		# Q minimization
-		mu = [2 * alpha_i / gamma_tilde for alpha_i in alpha]
-
-		if ((epoch + 1) % eval_freq_Q == 0) or ((epoch + 1) % 1000 == 0) and (mu[0] > 10):
-			if evaluate(w, a, x, y) < 1:  # didn't reach sufficient margin solution yet
-				pass
-			else:
-				try:
-					w_opt_Q, a_opt_Q = solver(
-						x,
-						y,
-						w_0,
-						a_0,
-						m,
-						d,
-						obj='Q',
-						mu=mu,
-						s=s,
-						x0=np.random.normal(size=(m * (d + 1),)),
-						optim_tol=1e-10 if mu[0] > 10 else 1e-7
-					)
-
-					gamma = minimal_margin(w_opt_Q, a_opt_Q, x, y)
-					w_tilde_norms_Q = calc_w_tilde_norms(w_opt_Q, a_opt_Q) / gamma
-					w_tilde_norms_Q_array.append(w_tilde_norms_Q)
-					training_loss_Q.append(gamma_tilde)
-				except Exception as e:
-					print(f'Mu = {mu[0]}:: {e}')
-
 	return {
 		'w': w_array,
 		'a': a_array,
 		'w_tilde_norms': w_tilde_norms_array,
 		'training_loss': training_loss,
 		'training_accuracy': training_accuracy,
-		'training_loss_Q': training_loss_Q,
-		'w_tilde_norms_Q': w_tilde_norms_Q_array,
 		'kernel_distances': kernel_distances
 	}
