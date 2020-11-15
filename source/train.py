@@ -15,7 +15,7 @@ def evaluate(w, a, x, y):
 	return np.sum(np.multiply(y_pred, y) > 1) / len(x)
 
 
-def train(w_0, a_0, x, y, m, d, alpha, s, step_size, n_epochs, eval_freq=1000, eval_freq_Q=10000):
+def train(w_0, a_0, x, y, step_size, n_epochs, eval_freq=1000):
 	training_loss = []
 	training_accuracy = []
 	w_tilde_norms_array = []
