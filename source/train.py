@@ -29,7 +29,7 @@ def train(w_0, a_0, x, y, step_size, n_epochs, eval_freq=1000):
 
 	for epoch in tqdm(range(n_epochs)):
 
-		w, a, gamma_tilde, gamma = update(w, a, x, y, epoch, step_size)
+		w_updated, a_updated, gamma_tilde, gamma = update(w, a, x, y, epoch, step_size)
 
 		if (epoch + 1) % eval_freq == 0:
 			# store learned weights and their norms
@@ -44,6 +44,8 @@ def train(w_0, a_0, x, y, step_size, n_epochs, eval_freq=1000):
 			# calculate kernel distance
 			k_t = lambda x, x_tag: neural_tangent_kernel(w, a, x, x_tag)
 			kernel_distances.append(kernel_distance(k_t(x, x), k_0(x, x)))
+
+		w, a = w_updated, a_updated
 
 	return {
 		'w': w_array,

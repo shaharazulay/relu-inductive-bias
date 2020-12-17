@@ -61,6 +61,14 @@ def minimal_margin(w, a, x, y):
 	return gamma
 
 
+def normalized_margins(w, a, x, y):
+	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	y_pred = np.dot(a, activations)
+	margins = np.multiply(y, y_pred)
+	gamma = np.min(margins)
+	return (margins / gamma).reshape(-1,)
+
+
 def plot_classifier(w, a, x, y):
 	xmin = -1
 	xmax = 1
