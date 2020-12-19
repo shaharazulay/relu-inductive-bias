@@ -13,7 +13,7 @@ def restore(v, m, d):
 
 
 def q_func(x, s=0):
-	return ((1 - s**2) * x * np.log(x * (1 - s**2) + np.sqrt(x ** 2 * (1 - s**2)**2 + s**2)) - np.sqrt(x ** 2 * (1 - s**2)**2 + s**2) + np.abs(s)) / (2 * (1 - s**2))
+	return (x * np.log(x + np.sqrt(x**2 + s**2)) - np.sqrt(x**2 + s**2) + np.abs(s)) / 2
 
 
 def Q_func(w, a, mu, s=0):
