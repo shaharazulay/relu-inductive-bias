@@ -45,7 +45,7 @@ def margin_constraint(v, x, y, m, d):
 	"""
 	w, a = restore(v, m, d)
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	activations = np.dot(w, x.transpose())
 	y_pred = np.dot(a, activations)
 	margins = np.multiply(y, y_pred)
 

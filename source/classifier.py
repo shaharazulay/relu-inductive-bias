@@ -35,7 +35,7 @@ def symmetric_init(alpha, s, m, d, symmetric=True, seed=None):
 def update(w, a, x, y, epoch, step_size):
 	n, d = x.shape
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	activations = np.dot(w, x.transpose())
 	y_pred = np.dot(a, activations)
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
@@ -43,7 +43,7 @@ def update(w, a, x, y, epoch, step_size):
 	temp = np.exp(gamma - margins)
 	grad_r = np.multiply(temp, y) / np.sum(temp)
 
-	c_i = 1.0 * (activations > 0)
+	c_i = np.ones(activations.shape)
 	w_grad = np.multiply(np.dot(c_i, np.multiply(x, grad_r.transpose())), a.transpose())
 	a_grad = np.dot(grad_r, activations.transpose())
 
@@ -53,8 +53,21 @@ def update(w, a, x, y, epoch, step_size):
 	return w, a, gamma_tilde, gamma
 
 
+def calc_training_loss(w, a, x, y):
+	n, d = x.shape
+
+	activations = np.dot(w, x.transpose())
+	y_pred = np.dot(a, activations)
+	margins = np.multiply(y, y_pred)
+	gamma = np.min(margins)
+
+	temp = np.exp(gamma - margins)
+	gamma_tilde = gamma - np.log(np.sum(temp) / n)
+	return gamma_tilde
+
+
 def minimal_margin(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	activations = np.dot(w, x.transpose())
 	y_pred = np.dot(a, activations)
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
@@ -62,7 +75,7 @@ def minimal_margin(w, a, x, y):
 
 
 def normalized_margins(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	activations = np.dot(w, x.transpose())
 	y_pred = np.dot(a, activations)
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
@@ -79,7 +92,7 @@ def plot_classifier(w, a, x, y):
 	xx_1, xx_2 = np.meshgrid(_x1, _x2)
 
 	input_ = np.c_[np.ones(xx_1.ravel().shape), xx_1.ravel(), xx_2.ravel()]
-	activations = np.maximum(np.dot(w, input_.transpose()), 0)
+	activations = np.dot(w, input_.transpose())
 	y_pred = np.dot(a, activations)
 
 	plt.figure()

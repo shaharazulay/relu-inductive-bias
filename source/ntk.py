@@ -6,8 +6,8 @@ from sklearn import svm
 def neural_tangent_kernel(w, a, x, x_tag):
 
 	def gradient(w, a, z):
-		activations = np.maximum(np.dot(w, z.transpose()), 0)
-		c_i = 1.0 * (activations > 0)
+		activations = np.dot(w, z.transpose())
+		c_i = np.ones(activations.shape)
 
 		w_grad = np.multiply(np.dot(c_i, z), a.transpose())
 		a_grad = activations.transpose()
