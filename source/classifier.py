@@ -69,6 +69,19 @@ def normalized_margins(w, a, x, y):
 	return (margins / gamma).reshape(-1,)
 
 
+def current_training_loss(w, a, x, y):
+	n, d = x.shape
+
+	activations = np.maximum(np.dot(w, x.transpose()), 0)
+	y_pred = np.dot(a, activations)
+	margins = np.multiply(y, y_pred)
+	gamma = np.min(margins)
+
+	temp = np.exp(gamma - margins)
+	gamma_tilde = gamma - np.log(np.sum(temp) / n)
+	return gamma_tilde
+
+
 def plot_classifier(w, a, x, y):
 	xmin = -1
 	xmax = 1
