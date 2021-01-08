@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ntk import neural_tangent_kernel, kernel_distance
-from classifier import update, minimal_margin
+from classifier import update, minimal_margin, current_training_loss
 from Q_minimization import calc_w_tilde_norms, solver
 
 
@@ -33,10 +33,10 @@ def train(w_0, a_0, x, y, step_size, n_epochs, eval_freq=1000):
 
 		if (epoch + 1) % eval_freq == 0:
 			# store learned weights and their norms
-			w_tilde_norms = calc_w_tilde_norms(w, a) / gamma
+			w_tilde_norms = calc_w_tilde_norms(w, a) / minimal_margin(w, a, x, y)
 			w_tilde_norms_array.append(w_tilde_norms)
 
-			training_loss.append(gamma_tilde)
+			training_loss.append(current_training_loss(w, a, x, y))
 			training_accuracy.append(evaluate(w, a, x, y))
 			w_array.append(w.copy())
 			a_array.append(a.copy())
