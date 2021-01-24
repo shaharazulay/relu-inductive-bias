@@ -2,78 +2,71 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def symmetric_init(alpha, s, m, d, symmetric=True, seed=None):
+def init_weights(alpha, s, d, same_sign=True, seed=None):
 	"""
-	alpha = |a_0| + ||w_0||
-	s = (|a_0| - ||w_0||) / (|a_0| + ||w_0||)
+	alpha = |u_0| * |v_0|
+	s = (|v_0| - |u_0|) / (|v_0| + |u_0|)
 	"""
 	if seed:
 		np.random.seed(seed)
 
-	norms_w = []
-	norms_a = []
+	norms_u = []
+	norms_v = []
 	for alpha_i, s_i in zip(alpha, s):
-		norm_w = np.sqrt(alpha_i * (1 - s_i) / (1 + s_i))
-		norm_a = np.sqrt(alpha_i * (1 + s_i) / (1 - s_i))
-		norms_w.append(norm_w)
-		norms_a.append(norm_a)
+		norm_u = np.sqrt(alpha_i * (1 - s_i) / (1 + s_i))
+		norm_v = np.sqrt(alpha_i * (1 + s_i) / (1 - s_i))
+		norms_u.append(norm_u)
+		norms_v.append(norm_v)
 
-	w_0 = np.random.normal(size=(m, d), loc=0, scale=1)
-	w_0_norms = np.linalg.norm(w_0, axis=1, ord=2)
-	w_0 = w_0 / w_0_norms[:, np.newaxis] * np.array(norms_w)[:, np.newaxis]
+	u_0 = np.random.normal(size=(d,), loc=0, scale=1)
+	u_0 = np.multiply(np.array(norms_u), np.sign(u_0))
 
-	a_0 = np.random.normal(size=(1, m), loc=0, scale=1)
-	a_0 = np.multiply(np.ones_like(a_0) * np.array(norms_a), (1 * (a_0 > 0) - 0.5) * 2)
+	v_0 = np.random.normal(size=(d,), loc=0, scale=1)
+	if same_sign:
+		v_0 = np.multiply(np.array(norms_v), np.sign(u_0))
+	else:
+		v_0 = np.multiply(np.array(norms_v), np.sign(v_0))
 
-	if symmetric:
-		w_0[m // 2:, :] = w_0[:m // 2, :]
-		a_0[:, m // 2:] = -a_0[:, :m // 2]
-
-	return w_0, a_0
+	return u_0, v_0
 
 
-def update(w, a, x, y, epoch, step_size):
+def update(u, v, x, y, step_size):
 	n, d = x.shape
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
+	y_pred = np.dot(np.multiply(u, v).transpose(), x.transpose())
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
 
 	temp = np.exp(gamma - margins)
 	grad_r = np.multiply(temp, y) / np.sum(temp)
 
-	c_i = 1.0 * (activations > 0)
-	w_grad = np.multiply(np.dot(c_i, np.multiply(x, grad_r.transpose())), a.transpose())
-	a_grad = np.dot(grad_r, activations.transpose())
+	u_grad = np.multiply(np.matmul(x.transpose(), grad_r), v)
+	v_grad = np.multiply(np.matmul(x.transpose(), grad_r), u)
 
-	a = a + step_size * a_grad
-	w = w + step_size * w_grad
+	u = u + step_size * u_grad
+	v = v + step_size * v_grad
 	gamma_tilde = gamma - np.log(np.sum(temp) / n)
-	return w, a, gamma_tilde, gamma
+	return u, v, gamma_tilde, gamma
 
 
-def minimal_margin(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
+def minimal_margin(u, v, x, y):
+	y_pred = np.dot(np.multiply(u, v).transpose(), x.transpose())
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
 	return gamma
 
 
-def normalized_margins(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
+def normalized_margins(u, v, x, y):
+	y_pred = np.dot(np.multiply(u, v).transpose(), x.transpose())
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
 	return (margins / gamma).reshape(-1,)
 
 
-def current_training_loss(w, a, x, y):
+def current_training_loss(u, v, x, y):
 	n, d = x.shape
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
+	y_pred = np.dot(np.multiply(u, v).transpose(), x.transpose())
 	margins = np.multiply(y, y_pred)
 	gamma = np.min(margins)
 
@@ -82,7 +75,7 @@ def current_training_loss(w, a, x, y):
 	return gamma_tilde
 
 
-def plot_classifier(w, a, x, y):
+def plot_classifier(u, v, x, y):
 	xmin = -1
 	xmax = 1
 
@@ -92,8 +85,7 @@ def plot_classifier(w, a, x, y):
 	xx_1, xx_2 = np.meshgrid(_x1, _x2)
 
 	input_ = np.c_[np.ones(xx_1.ravel().shape), xx_1.ravel(), xx_2.ravel()]
-	activations = np.maximum(np.dot(w, input_.transpose()), 0)
-	y_pred = np.dot(a, activations)
+	y_pred = np.dot(np.multiply(u, v).transpose(), input_.transpose())
 
 	plt.figure()
 	z = np.reshape(np.sign(y_pred), xx_1.shape)

@@ -2,71 +2,69 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-def flatten(w, a):
-	return np.hstack([w.flatten(), a.flatten()])
+def flatten(u, v):
+	return np.hstack([u.flatten(), v.flatten()])
 
 
-def restore(v, m, d):
-	w = v[: m * d].reshape(m, d)
-	a = v[m * d:].reshape(m,)
-	return w, a
+def restore(nu, d):
+	u = nu[: d].reshape(d,)
+	v = nu[d:].reshape(d,)
+	return u, v
 
 
 def q_func(x, s=0):
-	return (x * np.log(x + np.sqrt(x**2 + s**2)) - np.sqrt(x**2 + s**2) + np.abs(s)) / 2
+	return x * np.log(x + np.sqrt(x**2 + s**2)) - np.sqrt(x**2 + s**2)
 
 
-def Q_func(w, a, mu, s=0):
+def Q_func(u, v, mu, s=0):
 	"""
-	:param w: matrix of shape m x d representing the first layer w
-	:param a: vector of shape m x 1 representing the second layer a
-	:param mu: vector of shape m x 1 for each ReLU.
+	:param u: matrix of shape d representing the first layer u
+	:param v: vector of shape d representing the second layer v
+	:param mu: vector of shape dx 1 for each coordinate
 	"""
 	assert len(mu) == len(s)
-	assert len(a) == len(mu)
+	assert len(v) == len(mu)
 
 	cnt = 0
 	f = 0
-	for w_i, a_i, mu_i, s_i in zip(w, a, mu, s):
+	for u_i, v_i, mu_i, s_i in zip(u, v, mu, s):
 		cnt += 1
-		f += mu_i * q_func(np.linalg.norm(a_i * w_i, ord=2) / mu_i, s=s_i)
+		f += mu_i * q_func((u_i * v_i) / mu_i, s=s_i)
 	assert cnt == len(mu)
 	return f
 
 
-def Q_func_objective(v, mu, s, m, d):
-	w, a = restore(v, m, d)
-	return Q_func(w, a, mu, s)
+def Q_func_objective(nu, mu, s, d):
+	u, v = restore(nu, d)
+	return Q_func(u, v, mu, s)
 
 
-def margin_constraint(v, x, y, m, d):
+def margin_constraint(nu, x, y, d):
 	"""
-	for all n, y_n * sum(a_i[w_i^T x_n]+) >= 1
+	for all n, y_n * sum((u * v) x_n) >= 1
 	"""
-	w, a = restore(v, m, d)
+	u, v = restore(nu, d)
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
+	y_pred = np.dot(np.multiply(u, v).transpose(), x.transpose())
 	margins = np.multiply(y, y_pred)
 
 	return margins - 1
 
 
-def calc_w_tilde_norms(w, a):
-	w_norms = np.linalg.norm(w, ord=2, axis=1)
-	return np.multiply(np.abs(a), w_norms).reshape(-1,)
+def calc_w_tilde(u, v):
+	return np.multiply(u, v)
 
 
-def solver(x, y, w_0, a_0, m, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=None):
-	v_0 = flatten(w_0, a_0)
+def solver(x, y, u_0, v_0, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=None):
+	nu_0 = flatten(u_0, v_0)
 	if x0 is None:
-		x0 = v_0
-	cons = {'type': 'ineq', 'fun': lambda v: margin_constraint(v, x, y, m, d)}
+		x0 = nu_0
+	cons = {'type': 'ineq', 'fun': lambda v: margin_constraint(v, x, y, d)}
 
 	if obj == 'L1':
-		objective = lambda v: np.linalg.norm(v, ord=2)
+		objective = lambda nu: np.linalg.norm(nu, ord=2)
 	elif obj == 'Q':
-		objective = lambda v: Q_func_objective(v, mu, s, m, d)
+		objective = lambda nu: Q_func_objective(nu, mu, s, d)
 	else:
 		raise ValueError('objective not supported.')
 
@@ -85,4 +83,4 @@ def solver(x, y, w_0, a_0, m, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=N
 	if is_failed:
 		raise RuntimeError('Minimization Failed.')
 
-	return restore(sol.x, m, d)
+	return restore(sol.x, d)
