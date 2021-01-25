@@ -2,103 +2,76 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def symmetric_init(alpha, s, m, d, symmetric=True, seed=None):
-	"""
-	alpha = |a_0| + ||w_0||
-	s = (|a_0| - ||w_0||) / (|a_0| + ||w_0||)
-	"""
+def symmetric_init(alpha, s, d, symmetric=True, seed=None):
 	if seed:
 		np.random.seed(seed)
 
-	norms_w = []
-	norms_a = []
-	for alpha_i, s_i in zip(alpha, s):
-		norm_w = np.sqrt(alpha_i * (1 - s_i) / (1 + s_i))
-		norm_a = np.sqrt(alpha_i * (1 + s_i) / (1 - s_i))
-		norms_w.append(norm_w)
-		norms_a.append(norm_a)
+	norm_w = np.sqrt(alpha * (1 - s) / (1 + s))
+	norm_a = np.sqrt(alpha * (1 + s) / (1 - s))
 
-	w_0 = np.random.normal(size=(m, d), loc=0, scale=1)
-	w_0_norms = np.linalg.norm(w_0, axis=1, ord=2)
-	w_0 = w_0 / w_0_norms[:, np.newaxis] * np.array(norms_w)[:, np.newaxis]
+	u_0 = np.random.normal(size=(d, 1), loc=0, scale=1)
+	u_0_norm = np.linalg.norm(u_0, ord=2)
+	u_0 = u_0 / u_0_norm * norm_w
 
-	a_0 = np.random.normal(size=(1, m), loc=0, scale=1)
-	a_0 = np.multiply(np.ones_like(a_0) * np.array(norms_a), (1 * (a_0 > 0) - 0.5) * 2)
+	v_0 = np.random.normal(size=(d, 1), loc=0, scale=1)
+	v_0_norm = np.linalg.norm(v_0, ord=2)
+	v_0 = v_0 / v_0_norm * norm_w
 
 	if symmetric:
-		w_0[m // 2:, :] = w_0[:m // 2, :]
-		a_0[:, m // 2:] = -a_0[:, :m // 2]
+		v_0 = u_0
 
-	return w_0, a_0
+	a_0 = (1 * (np.random.normal(size=(1,), loc=0, scale=1) > 0) - 0.5) * 2 * norm_a
+
+	return u_0, v_0, a_0
 
 
-def update(w, a, x, y, epoch, step_size):
-	n, d = x.shape
+def update(u, v, a, x, y, step_size):
+	d, n = x.shape
 
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
-	margins = np.multiply(y, y_pred)
-	gamma = np.min(margins)
+	y_pred = np.matmul((u - v).transpose(), x) * a
+	grad_r = -(y_pred - y)/n
 
-	temp = np.exp(gamma - margins)
-	grad_r = np.multiply(temp, y) / np.sum(temp)
+	grad_xr = np.matmul(x, grad_r.transpose())
 
-	c_i = 1.0 * (activations > 0)
-	w_grad = np.multiply(np.dot(c_i, np.multiply(x, grad_r.transpose())), a.transpose())
-	a_grad = np.dot(grad_r, activations.transpose())
+	u_grad = grad_xr * a
+	v_grad = -grad_xr * a
+	a_grad = np.matmul((u - v).transpose(), grad_xr)
 
+	u = u + step_size * u_grad
+	v = v + step_size * v_grad
 	a = a + step_size * a_grad
-	w = w + step_size * w_grad
-	gamma_tilde = gamma - np.log(np.sum(temp) / n)
-	return w, a, gamma_tilde, gamma
+
+	return u, v, a
 
 
-def minimal_margin(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
-	margins = np.multiply(y, y_pred)
-	gamma = np.min(margins)
-	return gamma
+def update_with_relu(u, v, a, x, y, step_size):
+	d, n = x.shape
+
+	activations = np.maximum(np.matmul((u - v).transpose(), x), 0)
+	c_n = 1.0 * (activations > 0)
+	y_pred = activations * a
+	grad_r = -(y_pred - y)/n
+	grad_r = np.multiply(grad_r, c_n)
+
+	grad_xr = np.matmul(x, grad_r.transpose())
+
+	u_grad = grad_xr * a
+	v_grad = -grad_xr * a
+	a_grad = np.matmul((u - v).transpose(), grad_xr)
+
+	u = u + step_size * u_grad
+	v = v + step_size * v_grad
+	a = a + step_size * a_grad
+
+	return u, v, a
 
 
-def normalized_margins(w, a, x, y):
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
-	margins = np.multiply(y, y_pred)
-	gamma = np.min(margins)
-	return (margins / gamma).reshape(-1,)
+def current_training_loss(u, v, a, x, y):
+	y_pred = np.matmul((u - v).transpose(), x) * a
+	return 0.5 * np.linalg.norm(y - y_pred, ord=2) ** 2
 
 
-def current_training_loss(w, a, x, y):
-	n, d = x.shape
-
-	activations = np.maximum(np.dot(w, x.transpose()), 0)
-	y_pred = np.dot(a, activations)
-	margins = np.multiply(y, y_pred)
-	gamma = np.min(margins)
-
-	temp = np.exp(gamma - margins)
-	gamma_tilde = gamma - np.log(np.sum(temp) / n)
-	return gamma_tilde
-
-
-def plot_classifier(w, a, x, y):
-	xmin = -1
-	xmax = 1
-
-	mesh_step = 0.02
-	_x1 = np.arange(xmin, xmax, mesh_step)
-	_x2 = np.arange(xmin, xmax, mesh_step)
-	xx_1, xx_2 = np.meshgrid(_x1, _x2)
-
-	input_ = np.c_[np.ones(xx_1.ravel().shape), xx_1.ravel(), xx_2.ravel()]
-	activations = np.maximum(np.dot(w, input_.transpose()), 0)
-	y_pred = np.dot(a, activations)
-
-	plt.figure()
-	z = np.reshape(np.sign(y_pred), xx_1.shape)
-	plt.pcolormesh(xx_1, xx_2, z, cmap='coolwarm')
-
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ > 0], [x_[2] for x_, y_ in zip(x, y) if y_ > 0], s=100, c='w', marker='+', linewidth=2)
-	plt.scatter([x_[1] for x_, y_ in zip(x, y) if y_ < 0], [x_[2] for x_, y_ in zip(x, y) if y_ < 0], s=100, c='w', marker='_', linewidth=2)
-	plt.show()
+def current_training_loss_with_relu(u, v, a, x, y):
+	activations = np.maximum(np.matmul((u - v).transpose(), x), 0)
+	y_pred = activations * a
+	return 0.5 * np.linalg.norm(y - y_pred, ord=2) ** 2

@@ -12,31 +12,10 @@ def restore(v, m, d):
 	return w, a
 
 
-def q_func(x, s=0):
-	return (x * np.log(x + np.sqrt(x**2 + s**2)) - np.sqrt(x**2 + s**2) + np.abs(s)) / 2
-
-
-def Q_func(w, a, mu, s=0):
-	"""
-	:param w: matrix of shape m x d representing the first layer w
-	:param a: vector of shape m x 1 representing the second layer a
-	:param mu: vector of shape m x 1 for each ReLU.
-	"""
-	assert len(mu) == len(s)
-	assert len(a) == len(mu)
-
-	cnt = 0
-	f = 0
-	for w_i, a_i, mu_i, s_i in zip(w, a, mu, s):
-		cnt += 1
-		f += mu_i * q_func(np.linalg.norm(a_i * w_i, ord=2) / mu_i, s=s_i)
-	assert cnt == len(mu)
-	return f
-
-
-def Q_func_objective(v, mu, s, m, d):
-	w, a = restore(v, m, d)
-	return Q_func(w, a, mu, s)
+def q_func(x, u_0, v_0, a_0):
+	k = 2 * a_0[0] ** 2 - np.linalg.norm(u_0 - v_0, ord=2)**2
+	norm_x = np.linalg.norm(x, ord=2)
+	return (8 * norm_x**2 - k * (k + np.sqrt(8 * norm_x**2 + k**2)) * np.sqrt(np.sqrt(8 * norm_x**2 + k**2) - k)) / norm_x - 12 * np.sqrt(2) * np.sign(a_0[0]) * np.matmul((u_0 - v_0).transpose(), x)[0]
 
 
 def margin_constraint(v, x, y, m, d):
@@ -57,16 +36,20 @@ def calc_w_tilde_norms(w, a):
 	return np.multiply(np.abs(a), w_norms).reshape(-1,)
 
 
-def solver(x, y, w_0, a_0, m, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=None):
-	v_0 = flatten(w_0, a_0)
-	if x0 is None:
-		x0 = v_0
-	cons = {'type': 'ineq', 'fun': lambda v: margin_constraint(v, x, y, m, d)}
+def solver(x, y, u_0, v_0, a_0, obj='L1', optim_tol=1e-3, x_0=None, relu=False):
+	x0 = ((u_0 - v_0) * a_0).reshape(-1,)
+	if x_0 is not None:
+		x0 = x_0
+
+	if relu:
+		cons = {'type': 'ineq', 'fun': lambda v: optim_tol - np.abs(np.maximum(np.matmul(v.reshape(-1, 1).transpose(), x), 0) - y).reshape(-1,)}
+	else:
+		cons = {'type': 'ineq', 'fun': lambda v: optim_tol - np.abs(np.matmul(v.reshape(-1, 1).transpose(), x) - y).reshape(-1, )}
 
 	if obj == 'L1':
 		objective = lambda v: np.linalg.norm(v, ord=2)
 	elif obj == 'Q':
-		objective = lambda v: Q_func_objective(v, mu, s, m, d)
+		objective = lambda v: q_func(v.reshape(-1, 1), u_0, v_0, a_0)
 	else:
 		raise ValueError('objective not supported.')
 
@@ -85,4 +68,4 @@ def solver(x, y, w_0, a_0, m, d, obj='L1', mu=None, s=None, optim_tol=1e-6, x0=N
 	if is_failed:
 		raise RuntimeError('Minimization Failed.')
 
-	return restore(sol.x, m, d)
+	return sol.x
