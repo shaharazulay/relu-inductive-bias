@@ -12,10 +12,12 @@ def restore(v, m, d):
 	return w, a
 
 
-def q_func(x, u_0, v_0, a_0):
-	k = 2 * a_0[0] ** 2 - np.linalg.norm(u_0 - v_0, ord=2)**2
-	norm_x = np.linalg.norm(x, ord=2)
-	return (8 * norm_x**2 - k * (k + np.sqrt(8 * norm_x**2 + k**2)) * np.sqrt(np.sqrt(8 * norm_x**2 + k**2) - k)) / norm_x - 12 * np.sqrt(2) * np.sign(a_0[0]) * np.matmul((u_0 - v_0).transpose(), x)[0]
+def q_func(x, u_p_0, v_p_0, u_n_0, v_n_0):
+	f = 0
+	for i in range(len(x)):
+		k = 2 * u_p_0[i] ** 2 + 2 * v_p_0[i] ** 2
+		f += (k/4) * (1 - np.sqrt(1 + 4*x[i]**2/k**2) + (2*x[i]/k) * np.arcsinh(2*x[i]/k))
+	return f
 
 
 def margin_constraint(v, x, y, m, d):
@@ -36,20 +38,19 @@ def calc_w_tilde_norms(w, a):
 	return np.multiply(np.abs(a), w_norms).reshape(-1,)
 
 
-def solver(x, y, u_0, v_0, a_0, obj='L1', optim_tol=1e-3, x_0=None, relu=False):
-	x0 = ((u_0 - v_0) * a_0).reshape(-1,)
+def solver(x, y, u_p_0, v_p_0, u_n_0, v_n_0, obj='L1', optim_tol=1e-3, x_0=None):
+	x0 = (np.multiply(u_p_0, v_p_0) - np.multiply(u_n_0, v_n_0)).reshape(-1,)
 	if x_0 is not None:
 		x0 = x_0
 
-	if relu:
-		cons = {'type': 'ineq', 'fun': lambda v: optim_tol - np.abs(np.maximum(np.matmul(v.reshape(-1, 1).transpose(), x), 0) - y).reshape(-1,)}
-	else:
-		cons = {'type': 'ineq', 'fun': lambda v: optim_tol - np.abs(np.matmul(v.reshape(-1, 1).transpose(), x) - y).reshape(-1, )}
+	cons = {'type': 'ineq', 'fun': lambda v: optim_tol - np.abs(np.matmul(v.reshape(-1, 1).transpose(), x) - y).reshape(-1,)}
 
 	if obj == 'L1':
+		objective = lambda v: np.linalg.norm(v, ord=1)
+	elif obj == 'L2':
 		objective = lambda v: np.linalg.norm(v, ord=2)
 	elif obj == 'Q':
-		objective = lambda v: q_func(v.reshape(-1, 1), u_0, v_0, a_0)
+		objective = lambda v: q_func(v.reshape(-1, 1), u_p_0, v_p_0, u_n_0, v_n_0)
 	else:
 		raise ValueError('objective not supported.')
 
